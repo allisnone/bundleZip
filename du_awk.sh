@@ -6,7 +6,7 @@ forensics="network"
 start_date=0
 end_date=0
 out_put=/tmp/forensics_all.txt
-while getopts ":f:s:e:" opt 
+while getopts ":f:s:e:o:" opt 
 do
 	case $opt in 
 		f) 
@@ -20,15 +20,17 @@ do
 		echo "结束日志：$OPTARG" ;; 
 		o) 
 		out_put=$OPTARG
-		echo "结束日志：$OPTARG" ;;
+		echo "输出目标：$OPTARG" ;;
 		?) 
-		echo "未知参数" exit 1;; 
+		echo "未知参数" 
+		exit 1;; 
 	esac
 done
 
-echo $forensics
-echo $start_date
-echo $end_date
+#echo $forensics
+#echo $start_date
+#echo $end_date
+#echo $out_put
 
 
 dir=/var/skyguard/sps/forensics/incident/network/
@@ -36,7 +38,7 @@ dir=/var/skyguard/sps/forensics/incident/network/
 len=54
 #时间开始的index
 date_index=46
-#echo $dir
+
 #基于给定的时间过滤
 #start_date=20181026
 #end_date=20181102
@@ -57,6 +59,7 @@ if [ "$forensics" = "endpoint" ]
 	exit 1
 fi
 
+echo "原始证据目录: $dir"
 #du -h max-depth=1 $dir | awk '{if(length($2)>11) {split(substr($2,3),a,"/");b=a[1]*10000+a[2]*100+a[3];print $1,$2,substr($2,3),b}}' | sort -t " " -k 4 -n > /tmp/forensics_all.txt
 # du -h max-depth=1 $dir | awk -v len="$len" -v date_index="$date_index" '{if(length($2)>len) {split(substr($2,date_index),a,"/");b=a[1]*10000+a[2]*100+a[3];print $1,$2,substr($2,date_index),b}}'
 
