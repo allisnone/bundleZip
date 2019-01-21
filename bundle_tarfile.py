@@ -32,6 +32,16 @@ def get_partition_info(partition='/var'):
         print '可能获取分区信息失败，请使用命令查看：%s' % partition_info_cmd
     return -1,-1,-1.0
 
+def is_enough_partition(rate=0.9,additional_size='',partition='/var'):
+    total_size_G,available_size_G,used_rate = get_partition_info(partition)
+    if additional_size:
+        used_rate = used_rate + round(get_int_size(additional_size),2)/1023^3
+    if used_rate>rate:
+        print '当前tar文件保存分区可用空间过小，将不进行压缩;请联系管理员清理空间或者上传已压缩的证据文件。'
+        return False
+    else:
+        return True
+
 def collect_du_result(cmd = 'sh du_awk.sh',forensics_type='network',start_date='18480101',end_date='18481229',out_put='forensics.txt'):
     #cmd= du -h max-depth=1 | awk '{if(length($2)>11) {split(substr($2,3),a,"/");b=a[1]*10000+a[2]*100+a[3];print $1,$2,substr($2,3),b}}' | sort -t " " -k 4 -n -r
     """
@@ -122,7 +132,6 @@ def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',dest
     处理超过指定大小的文件夹情况
     """
     #['16G','/var/skyguard/sps/forensics/incident/network/2018/11/25', '2018/11/25','20181125']
-    
     if len(dest_dir)!=4:
         return -1
     else:
