@@ -21,3 +21,4 @@ if __name__ == '__main__':
     #du_result_file='forensics_all.txt'
     results = bundle_tarfile.get_du_result(du_result_file)
     bundle_tarfile.bundle_tar_zip(results, start_date, end_date, unit_size,debug=True,rate=1.0)
+    #the end
