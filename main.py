@@ -31,7 +31,7 @@ if __name__ == '__main__':
     print '---------------------Start 调用Shell脚本--------------------------------'
     var_available_size,du_result_file = bundle_tarfile.collect_du_result(cmd = 'sh du_awk.sh',forensics_type='network',start_date=start_date,end_date=end_date,out_put='forensics.txt')
     print '生成%s证据文件目录详细信息的文件位于：%s' % (forensics_type,du_result_file)
-    print '当前/var目录可用硬盘空间: %sG' % (var_available_size/1024/1024)
+    print '当前/var目录可用硬盘空间: %s' % bundle_tarfile.get_str_size(var_available_size*1024)
     print '---------------------End 调用Shell脚本--------------------------------\n'
     #du_result_file='/tmp/network_forensics.txt'
     #du_result_file='forensics_all.txt'
