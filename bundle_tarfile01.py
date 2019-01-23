@@ -119,7 +119,7 @@ def filter_great_dir(du_result,great_size='100M',rate=1.0,huge_rate=1.5):
         this_dir_size = get_int_size(du_result[i].split(' ')[0])
         if this_dir_size>(great_size_int*huge_rate): #超大文件夹，一天分几个压缩包
             huge_dir_list.append(du_result[i])
-        elif this_dir_size >=(great_size_int*rate): #中等文件夹，一天一个压缩包
+        elif this_dir_size >=(great_size*rate): #中等文件夹，一天一个压缩包
             great_dir_list.append(du_result[i])
             #du_result.pop(i)
         else: #小文件夹
@@ -127,7 +127,7 @@ def filter_great_dir(du_result,great_size='100M',rate=1.0,huge_rate=1.5):
         i = i + 1
     return huge_dir_list,great_dir_list,normal_dir_list
 
-def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',dest_tar_dir='/var/skyguard/sps/forensics/incident/network',tar_count=0):
+def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',dest_tar_dir='/var/skyguard/sps/forensics/incident/network'):
     """
     处理超过指定大小的文件夹情况
     """
@@ -137,7 +137,7 @@ def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',dest
     else:
         temp_size = 0
         limit_size_int = get_int_size(limit_size)
-        #tar_count = 0
+        tar_count = 0
         this_dir_size = float(dest_dir[0][:-1])
         this_dir = dest_dir[1]
         date_str = dest_dir[3]
@@ -157,7 +157,7 @@ def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',dest
                 file_name = file_info[1]
                 if temp_size>limit_size_int:
                     tar.close()
-                    print '巨大文件分拆：%s tar_count=%s tar dest: %s' % (this_dir, tar_count,full_tar_file_name)
+                    print 'tar_count=%s tar dest: %s' % (tar_count,full_tar_file_name)
                     tar_count = tar_count + 1
                     tar_file_name = keyword +'_'  + date_str + '_%s.tar.gz'%tar_count
                     full_tar_file_name = os.path.join(dest_tar_dir,tar_file_name)
@@ -169,16 +169,15 @@ def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',dest
                     pass
                 print 'file:' + os.path.join(this_dir,file_name)
                 print 'temp_size: %s limit_size: %s ' % (temp_size,limit_size_int)
-                print 'simulate to add file: %s' % os.path.join(this_dir,file_name)
-                #tar.add(os.path.join(this_dir,file_name))
+                tar.add(os.path.join(this_dir,file_name))
             else:
                 print 'tar_file: file_info error: info detail: %s' % info
                 pass
             i = i + 1
         tar.close()
-        print '巨大文件分拆：%s tar_count=%s tar dest: %s' % (this_dir, tar_count,full_tar_file_name)
-        print 'sub_tar_count=',tar_count
-        return tar_count
+        print 'tar_count=',tar_count
+    
+    return 1
  
 #dest_dir = ['49M', '/var/skyguard/sps/forensics/incident/network/2018/12/28', '2018/12/28', '20181228']
 #tar_huge_dir(dest_dir, limit_size='10M')
@@ -200,48 +199,33 @@ def tar_and_zip_dirs(target_dirs,keyword='forensics',is_same_dir=True,dest_tar_d
     else:
         tar_file_name = keyword +'_'  + target_dirs[0][3] +'_' + target_dirs[-1][3] + '.tar.gz'
     full_tar_file_name = os.path.join(dest_tar_dir,tar_file_name)
-    if tar_cout>=0: print 'start： tar_cout=%s, target tar file: ' % tar_cout + full_tar_file_name
+    if tar_cout>=0: print 'tar_cout=%s, target tar file: ' % tar_cout + full_tar_file_name
     tar=tarfile.open(full_tar_file_name,'w:gz')
     for target in target_dirs:
         if len(target)!=4:
-            print '目标元素出错： %s' % target
             continue
-        print '    add dir: %s' % target[1]
-        #tar.add(target[1])#,arcname=target[1])
+        tar.add(target[1])#,arcname=target[1])
     #print tar.gettarinfo().size
-    if tar_cout>=0: print 'End：tar_cout=%s, target tar file: ' % tar_cout + full_tar_file_name
     tar.close()
     return 1
 
-def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',debug=True,rate=1.0,huge_rate=1.5,buffer_rate=1.25):
+def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',debug=True,rate=1.0,huge_rate=1.5):
     """
     批量划分证据文件，分多次打包和压缩证据文件
     du_results = ['272M /var/skyguard/sps/forensics/incident/network/2018/11/19 2018/11/19 20181119\n']
     """
     tar_count = 0
     huge_dir_list,great_size_list,normal_size_list = filter_great_dir(du_results, unit_size, rate)
-    print huge_dir_list
-    print great_size_list
-    print normal_size_list
-    if debug: print '---------------------巨大文件拆分压缩--------------------------------'
     for huge in huge_dir_list: #非常大的目录，拆分压缩
-        huge_element = huge.replace('\n','').split(' ')
-        if debug: print '开始巨大文件夹拆分压缩 , tar_count=%s'% tar_count
-        if debug: print '被拆分文件夹： %s'% huge_element[:2]
+        huge_element = ele.replace('\n','').split(' ')
         tar_huge_dir(huge_element, limit_size=unit_size,huge_rate=huge_rate,keyword='network',dest_tar_dir='/var/skyguard/sps/forensics/incident/network')
+        if debug: print 'Complete to tar and zip great DIR: %s' % huge_element[:2]
         tar_count = tar_count + 1
-        if debug: print '结束巨大文件夹拆分压缩 , tar_count=%s'% tar_count
-    if debug: print '---------------------End  巨大文件拆分压缩--------------------------------\n'
-    if debug: print '---------------------单个大文件压缩--------------------------------'
     for ele in great_size_list: #先压缩大文件夹，一个文件夹压缩一次
         element = ele.replace('\n','').split(' ')
-        if debug: print '开始单个大文件夹压缩 , tar_count=%s'% tar_count
-        if debug: print '单一文件夹： %s'% huge_element[:2]
         tar_and_zip_dirs([element],tar_cout=tar_count)
-        if debug: print '结束单个文件夹压缩 , tar_count=%s'% tar_count
+        if debug: print 'Complete to tar and zip great DIR: %s' % element[:2]
         tar_count = tar_count + 1
-    if debug: print '---------------------End 单个大文件压缩--------------------------------\n'
-    if debug: print '---------------------小大文件累计压缩--------------------------------'
     base_line = get_int_size(unit_size)
     i = 0
     temp_sum = 0 #每次压缩文件累计大小，先用于判断，后累加
@@ -278,7 +262,7 @@ def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',debug=True,rat
                 else:#多个目录，之前有累加，应该做两次压缩
                     #i 不变，保证上一个this size 小于base_line
                     #temp_sum_dir = temp_sum_dir[:-1]
-                    if debug: print '22'
+                    if debug: print '11'
                     tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count)
                     #之前的先做一次压缩              
                     tar_and_zip_dirs([element],tar_cout=tar_count+1)
@@ -292,7 +276,7 @@ def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',debug=True,rat
             else: #做累计计算，由累计和决定是否做压缩
                 if temp_sum >=base_line: #如果之前的累计>baseline，#应避免出现的情况，不做处理
                     #之前的做一次压缩，并从当前开始重置
-                    if debug: print '避免出现的情况，当前 i: %s, 累加的size: %sM' % (i,temp_sum/1024/1024)
+                    if debug: print '33 i: %s, size: %sM' % (i,temp_sum/1024/1024)
                     if is_new_start: 
                         pass
                     else:#做一次压缩
@@ -301,21 +285,9 @@ def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',debug=True,rat
                 elif temp_sum < base_line and (temp_sum + this_size) > base_line:
                     #加上该文件夹的大小才大于baseline，上一次累加小于baseline
                     #之前的做一次压缩，并从当前开始重置
-                    #if debug: print '44-'
-                    if (temp_sum+ this_size)<=(base_line*buffer_rate):#超出baseline在合理的范围内，一起压缩
-                        temp_sum_dir.append(element)
-                        tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count)
-                        if debug: print '合并本次压缩，当前 i: %s, 压缩包 size: %s ' % (i,(temp_sum+this_size)/1024/1024)
-                        temp_sum_dir = []
-                        temp_sum = 0
-                    else:#超出baseline太多，只压缩前面的；本次作为下次累加的开始
-                        tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count)
-                        if debug: print '压缩之前目录，当前 i: %s, 压缩包size: %s ' % (i,temp_sum/1024/1024)
-                        temp_sum_dir = [element]
-                        temp_sum = this_size
-                    #tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count)
+                    if debug: print '44-55'
+                    tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count)
                     tar_count = tar_count + 1
-                    """
                     if is_new_start:#仅一个文件夹，压缩
                         #i = i + 1
                         #is_new_start = True
@@ -330,9 +302,7 @@ def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',debug=True,rat
                         is_new_start = True
                         temp_sum_dir = [element]
                         temp_sum = this_size
-                    """
                 else: #继续累加
-                    if debug: print '继续累加目录，当前 i: %s, size: %sM' % (i,temp_sum/1024/1024)
                     temp_sum  = temp_sum + get_int_size(element[0])
                     temp_sum_dir.append(element)
                     is_new_start = False
@@ -340,21 +310,10 @@ def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',debug=True,rat
                         if debug: print 'Final tar, i: %s, size: %sM' % (i,temp_sum/1024/1024)
                         tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count)
                         tar_count = tar_count + 1
-                    else:
-                        pass
         else:
-            if debug: print '获取目录元素出错，当前 i: %s, size: %sM' % (i,temp_sum/1024/1024)
-            pass
+            print 'error'
+            #pass
         i = i + 1
     #if debug: print 'Total tar count: %s' % tar_count
-    if debug: print '---------------------End 小大文件累计压缩--------------------------------\n'
-    print '完成日期从%s-%s 的证据文件打包压缩，总共累计%s个压缩包' % (start_date,end_date,tar_count)
+    print '完成日期从%s-%s 的证据文件打包压缩，分%s个压缩包' % (start_date,end_date,tar_count)
     return
-
-start_date = 18640101
-end_date = 18640101
-unit_size = '10G'
-#du_result_file='/tmp/network_forensics.txt'
-du_result_file='forensics_all.txt'
-results = get_du_result(du_result_file)
-bundle_tar_zip(results, start_date, end_date, unit_size,debug=True,rate=1.0)

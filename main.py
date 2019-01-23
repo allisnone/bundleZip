@@ -8,7 +8,7 @@ if __name__ == '__main__':
     parser.add_argument('--forensics', type=str, default = 'network') 
     parser.add_argument('--start-date', type=int, default=18640101)
     parser.add_argument('--end-date', type=int, default=18640101)
-    parser.add_argument('--unit-size', type=str, default='500M')  
+    parser.add_argument('--unit-size', type=str, default='10G')  
     args = parser.parse_args()
     forensics_type = args.forensics
     start_date = args.start_date
