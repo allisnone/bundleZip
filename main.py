@@ -16,11 +16,16 @@ if __name__ == '__main__':
     unit_size = args.unit_size
     print '\n'
     print '---------------------Start 使用说明 --------------------------------'
-    print '使用示例： python main.py --unit-size=5G --forensics=network --start-date=20181101 --end-date=20190115'
-    print '默认不加任何参数相当于（不做日期过滤）：python main.py --unit-size=10G --forensics=network'
+    print '1. 直接使用：python main.py' 
+    print '2. 默认不加任何参数时，相当于（不做日期过滤）：python main.py --unit-size=10G --forensics=network'
+    print '3. 加参数时，使用示例： python main.py --unit-size=5G --forensics=network --start-date=20181101 --end-date=20190115'
+    print '4. 也可以使用重定向输出日志到文件，比如： '
+    print '   python main.py --unit-size=5G --forensics=network --start-date=20181101 --end-date=20190115 > output_log.txt'
+    print '5. 如果仅仅预演压缩的结果而不进行实质性压缩，使用以下替换命令后，再运行程序，如：'
+    print "   sed -i 's/tar.add/#tar.add/g' bundle_tarfile.py"
     print '\n'
     print '当前参数设置如下：'
-    print '证据文件类型是：%s ，开始时间：%s ， 结束时间：%s ， 压缩文件大小限制： %s 。'% (forensics_type,start_date,end_date,unit_size)
+    print '  证据文件类型是：%s ，开始时间：%s ， 结束时间：%s ， 压缩文件大小限制： %s 。'% (forensics_type,start_date,end_date,unit_size)
     print '---------------------End 使用说明 --------------------------------\n'
     
     print '---------------------Start 调用Shell脚本--------------------------------'

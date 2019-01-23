@@ -1,6 +1,6 @@
 #!/bin/sh
 #Author: zhangguoxin
-echo "可用参数： \n -f 证据类型：包括email,network,endponit; \n -s 过滤证据的开始时间，如20180821；\n -e 过滤证据的开始时间，如20180821;\n -o 输出的目标文件,如：/tmp/forensics_all.txt。"
+echo "du_awk.sh 脚本可用参数： \n -f 证据类型：包括email,network,endponit; \n -s 过滤证据的开始时间，如20180821；\n -e 过滤证据的开始时间，如20180821;\n -o 输出的目标文件,如：/tmp/forensics_all.txt。"
 echo "\n开始使用awk脚本：默认证据类型是network,无时间过滤。\n"
 forensics="network"
 start_date=0
