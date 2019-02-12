@@ -91,16 +91,21 @@ def get_int_size(size='10M'):
     unit = 'KMGTPEZY'#['K','M','G','T','P','E','Z','Y']
     if isinstance(size, int):
         return size
-    elif size.isdigit():
+    elif isinstance(size, float):
         return int(size)
-    elif is_number(size[:-1]):#size[:-1].isdigit():
-        unit_index = unit.find(size[-1].upper())  
-        if unit_index>=0:
-            return int(float(size[:-1]) * (1024 ** (unit_index + 1 )))
-        else: #1024的八次方意外的字节数
-            return -1
+    elif isinstance(size, str):
+        if size.isdigit():
+            return int(size)
+        elif is_number(size[:-1]):#size[:-1].isdigit():
+            unit_index = unit.find(size[-1].upper())  
+            if unit_index>=0:
+                return int(float(size[:-1]) * (1024 ** (unit_index + 1 )))
+            else: #1024的八次方意外的字节数
+                return -1
+        else:
+            return -2
     else:
-        return -2
+        return -3
 
 def get_str_size(size=100):
     """
@@ -172,7 +177,7 @@ def get_default_dest_dir(forensics_type='network',partition_dir='/var'):
         pass
     return dest_tar_dir,partition_dir
 
-def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',tar_count=0):
+def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',tar_count=0,rate=0.9, partition='/var'):
     """
     处理超过指定大小的巨大文件夹情况--分多个压缩包压缩或者打包
     返回压缩序号和压缩包个数
@@ -180,10 +185,14 @@ def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',tar_
     #['16G','/var/skyguard/sps/forensics/incident/network/2018/11/25', '2018/11/25','20181125']
     dest_tar_dir,partition_dir = get_default_dest_dir(forensics_type=keyword)
     if len(dest_dir)!=4:
-        return -1
+        return -1,-1
     else:
         temp_size = 0
         limit_size_int = get_int_size(limit_size)
+        if is_enough_partition(limit_size_int*huge_rate, rate, partition):
+            pass
+        else:
+            return 0,-1
         name_count = 0
         this_dir_size = float(dest_dir[0][:-1])
         this_dir = dest_dir[1]
@@ -205,6 +214,7 @@ def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',tar_
                 if temp_size>limit_size_int: #超过限制压缩包大小，结束当前压缩，新建压缩
                     tar.close()
                     print '巨大文件分拆：%s huge_tar_count=%s 原始文件累计大小: %s, 目标tar文件: %s' % (this_dir, tar_count,get_str_size(temp_size),full_tar_file_name)
+                    print '-----------------------------------------'
                     name_count = name_count + 1
                     tar_count = tar_count + 1
                     tar_file_name = keyword +'_'  + date_str + '_%s.tar.gz'%name_count
@@ -213,7 +223,6 @@ def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',tar_
                     temp_size = file_size
                 else:#继续累加，添加文件到压缩包
                     temp_size = temp_size + file_size
-                    pass
                 #print 'file:' + os.path.join(this_dir,file_name)
                 #print 'temp_size: %s limit_size: %s ' % (temp_size,limit_size_int)
                 #print 'simulate to add file: %s' % os.path.join(this_dir,file_name)
@@ -232,11 +241,17 @@ def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',tar_
  
 #dest_dir = ['49M', '/var/skyguard/sps/forensics/incident/network/2018/12/28', '2018/12/28', '20181228']
 #tar_huge_dir(dest_dir, limit_size='10M')
-def tar_and_zip_dirs(target_dirs,keyword='network',tar_cout=0):
+def tar_and_zip_dirs(target_dirs,keyword='network',tar_cout=0,addition_size=0,rate=0.9, partition='/var'):
     """
     打包和压缩文件夹列表
     target_dirs = [['2.7M', './2018/10/07', '2018/10/07', '20181007'], ['14M', './2018/10/16', '2018/10/16', '20181016'], ['8.0K', './2018/10/17', '2018/10/17', '20181017'], ['4.5M', './2018/10/18', '2018/10/18', '20181018'], ['44K', './2018/10/19', '2018/10/19', '20181019'], ['28K', './2018/10/21', '2018/10/21', '20181021'], ['208K', './2018/10/22', '2018/10/22', '20181022'], ['76K', './2018/10/23', '2018/10/23', '20181023'], ['72K', './2018/10/29', '2018/10/29', '20181029'], ['24K', './2018/10/30', '2018/10/30', '20181030'], ['13M', './2018/11/10', '2018/11/10', '20181110'], ['120K', './2018/11/13', '2018/11/13', '20181113'], ['8.0K', './2018/11/14', '2018/11/14', '20181114'], ['40K', './2018/11/15', '2018/11/15', '20181115'], ['13M', './2018/11/24', '2018/11/24', '20181124'], ['3.1M', './2018/11/25', '2018/11/25', '20181125'], ['1.1M', './2018/11/26', '2018/11/26', '20181126'], ['16M', './2018/11/27', '2018/11/27', '20181127'], ['140K', './2018/11/29', '2018/11/29', '20181129'], ['20K', './2018/11/30', '2018/11/30', '20181130'], ['116K', './2018/12/03', '2018/12/03', '20181203'], ['488K', './2018/12/18', '2018/12/18', '20181218'], ['9.6M', './2018/12/19', '2018/12/19', '20181219'], ['56K', './2018/12/20', '2018/12/20', '20181220'], ['14M', './2018/12/21', '2018/12/21', '20181221'], ['8.0K', './2018/12/22', '2018/12/22', '20181222'], ['56K', './2018/12/24', '2018/12/24', '20181224'], ['144K', './2018/12/25', '2018/12/25', '20181225'], ['20K', './2018/12/26', '2018/12/26', '20181226']]
     """
+    if addition_size>0: #做硬盘空间保护
+        if is_enough_partition(addition_size, rate, partition):
+            pass
+        else: #没有足够的空间不压缩
+            print '硬盘空间实用率超过%s，后续不进行目录合并压缩，！' % rate
+            return 0
     dest_tar_dir,partition_dir = get_default_dest_dir(forensics_type=keyword)
     tar_file_name = ''
     if not target_dirs:
@@ -261,7 +276,7 @@ def tar_and_zip_dirs(target_dirs,keyword='network',tar_cout=0):
     tar.close()
     return 1
 
-def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',forensics_type='network',debug=True,rate=1.0,huge_rate=1.5,buffer_rate=1.25,patition_limit_rate=0.9):
+def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',forensics_type='network',debug=True,rate=1.0,huge_rate=1.5,buffer_rate=1.25,partition_limit_rate=0.9,partition='/var'):
     """
     批量划分证据文件，分多次打包和压缩证据文件
     du_results = ['272M /var/skyguard/sps/forensics/incident/network/2018/11/19 2018/11/19 20181119\n']
@@ -275,13 +290,12 @@ def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',forensics_type
         if debug: print '开始巨大文件夹拆分压缩 , huge_tar_count=%s'% huge_tar_count
         if debug: print '被拆分文件夹： %s'% huge_element[:2]
         dir_size = get_int_size(huge_element[0])
-        if not is_enough_partition(additional_size=dir_size,rate=patition_limit_rate):
-            print '空间不够，后续不进行巨大文件夹分拆压缩！'
+        huge_tar_count, name_count = tar_huge_dir(huge_element, limit_size=unit_size,huge_rate=huge_rate,keyword=forensics_type,tar_count=huge_tar_count,rate=partition_limit_rate, partition=partition)
+        if huge_tar_count==0 and name_count==-1:
+            print '11 硬盘空间实用率超过%s，后续不进行目录合并压缩！巨大文件压缩部分完成：%s，请清理空间后重新运行程序' % (rate,huge_dir_list)
             break
         else:
-            huge_tar_count, name_count = tar_huge_dir(huge_element, limit_size=unit_size,huge_rate=huge_rate,keyword=forensics_type,tar_count=huge_tar_count)
-            #huge_tar_count = huge_tar_count + sub_tar_count
-            if debug: print '结束巨大文件夹拆分压缩 , 拆分为%s子压缩包'% name_count
+            pass
         if debug: print '-------------------------------------------------------------------'
     if debug: print '---------------------End  单日巨大文件夹拆分压缩，累计%s个巨大文件夹,共%s个压缩包--------------------------------\n' % (len(huge_dir_list),huge_tar_count)
     if debug: print '---------------------Start 单日单个大文件夹压缩--------------------------------'
@@ -292,11 +306,13 @@ def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',forensics_type
             continue
         if debug: print '开始压缩单个大文件夹%s , great_count=%s'% (element[:2],great_count)
         dir_size = get_int_size(element[0])
-        if not is_enough_partition(additional_size=dir_size,rate=patition_limit_rate):
-            print '空间不够，后续不进行大文件夹压缩！'
+        tar_result = tar_and_zip_dirs([element],tar_cout=great_count,keyword=forensics_type,addition_size=dir_size,rate=partition_limit_rate, partition=partition)
+        if tar_result==0:
+            print '22 硬盘空间实用率超过%s，后续不进行目录合并压缩！巨大文件压缩部分完成：%s，请清理空间后重新运行程序' % (rate,great_size_list)
+            if debug: print '中断单个文件夹 , great_count=%s'% great_count
             break
         else:
-            tar_and_zip_dirs([element],tar_cout=great_count,keyword=forensics_type)
+            pass
         if debug: print '结束压缩单个文件夹 , great_count=%s'% great_count
         if debug: print '-------------------------------------------------------------------'
         great_count = great_count + 1
@@ -313,86 +329,118 @@ def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',forensics_type
         element = normal_size_list[i].replace('\n','').split(' ')
         if len(element)==4:
             this_size = get_int_size(element[0])
-            if this_size> base_line:
+            if this_size> base_line:#前面已经做过滤，理论上这段代码不会被执行
                 if is_new_start:#直接处理或者考虑把大目录划分，或者拆分单个文件
-                    #仅仅一个目录
-                    #做一次压缩
-                    if debug: print '11'
-                    tar_and_zip_dirs([element],tar_cout=tar_count,keyword=forensics_type)
-                    if debug: print '11 i: %s, size: %s' % (i,element[0])
+                    #仅仅一个目录，做一次压缩
+                    #tar_and_zip_dirs([element],tar_cout=tar_count,keyword=forensics_type)
+                    tar_result = tar_and_zip_dirs([element],tar_cout=tar_count,keyword=forensics_type,addition_size=this_size,rate=partition_limit_rate, partition=partition)
+                    if tar_result!=1: 
+                        if debug: print '310 硬盘空间实用率超过%s，后续不进行目录合并压缩!' % partition_limit_rate
+                        break
+                    else:#
+                        if debug: print '311 合并本次压缩，当前 小文件夹目录序号i: %s, 第%s次压缩包 大小: %s' % (i,tar_count,get_str_size(this_size))
+                        tar_count = tar_count + 1
+                        is_new_start = True
+                        temp_sum_dir = []
+                        temp_sum = 0
+                        print '-------------------------------------------------------------------'
                     #i = i + 1
-                    #is_new_start = True
-                    tar_count = tar_count + 1
-                    temp_sum_dir = []
-                    temp_sum = 0
                 else:#多个目录，之前有累加，应该做两次压缩
                     #i 不变，保证上一个this size 小于base_line
                     #temp_sum_dir = temp_sum_dir[:-1]
-                    if debug: print '22'
-                    tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type)
-                    #之前的先做一次压缩              
-                    tar_and_zip_dirs([element],tar_cout=tar_count+1,keyword=forensics_type)
-                    #当前再做一次压缩,
-                    if debug: print '22 i: %s, size: %sM' % (i,temp_sum/1024/1024)
-                    #i = i + 1
-                    tar_count = tar_count + 2
-                    is_new_start = True
-                    temp_sum_dir = []
-                    temp_sum = 0
+                    #当前大文件先做一次压缩,           
+                    #tar_and_zip_dirs([element],tar_cout=tar_count+1,keyword=forensics_type)
+                    tar_result = tar_and_zip_dirs([element],tar_cout=tar_count,keyword=forensics_type,addition_size=this_size,rate=partition_limit_rate, partition=partition)
+                    if tar_result!=1: 
+                        if debug: print '320 硬盘空间实用率超过%s，后续不进行目录合并压缩!'
+                        break
+                    else:#
+                        if debug: print '321 合并本次压缩，当前 小文件夹目录序号i: %s, 第%s次压缩包 大小: %s' % (i,tar_count,get_str_size(this_size))
+                        tar_count = tar_count + 1
+                        print '-------------------------------------------------------------------'
+                    if temp_sum<base_line*(2-buffer_rate):#上一次累加文件大小过小，暂不压缩
+                        is_new_start = False
+                        if debug: print '323 i: %s, size: %sM, 累加文件过小，暂不压缩,继续累加！' % (i,temp_sum/1024/1024)
+                    else: #上一次累加文件大小足够大但不超过baseline，多做一次压缩
+                        #tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type)
+                        tar_result = tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count+1,keyword=forensics_type,addition_size=temp_sum,rate=partition_limit_rate, partition=partition)
+                        if debug: print '322 i: %s, size: %sM' % (i,temp_sum/1024/1024)
+                        if tar_result!=1: 
+                            if debug: print '324 硬盘空间实用率超过%s，后续不进行目录合并压缩!' % partition_limit_rate
+                            break
+                        else:#
+                            if debug: print '325 合并本次压缩，当前 小文件夹目录序号i: %s, 第%s次压缩包 大小: %s' % (i,tar_count,get_str_size(temp_sum))
+                            tar_count = tar_count + 1
+                            is_new_start = True
+                            temp_sum_dir = []
+                            temp_sum = 0
+                            print '-------------------------------------------------------------------'
             else: #做累计计算，由累计和决定是否做压缩
-                if temp_sum >=base_line: #如果之前的累计>baseline，#应避免出现的情况，不做处理
+                this_sum = temp_sum + this_size
+                if this_sum >=base_line*buffer_rate: #如果之前的累计>baseline，#应避免出现的情况，不做处理
                     #之前的做一次压缩，并从当前开始重置
-                    if debug: print '避免出现的情况，当前 i: %s, 累加的size: %s' % (i,get_str_size(temp_sum))
-                    if is_new_start: 
-                        pass
+                    tar_result = tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type,addition_size=temp_sum,rate=partition_limit_rate, partition=partition)
+                    if tar_result!=1: 
+                        if debug: print '410 硬盘空间实用率超过%s，后续不进行目录合并压缩!' % partition_limit_rate
+                        break
                     else:#做一次压缩
-                        pass
-                    pass
-                elif temp_sum < base_line and (temp_sum + this_size) > base_line:
+                        if debug: print '411 合并本次压缩，当前 小文件夹目录序号i: %s, 第%s次压缩包 大小: %s' % (i,tar_count,get_str_size(temp_sum))
+                        tar_count = tar_count + 1
+                        is_new_start = True
+                        temp_sum_dir = [element]
+                        temp_sum = this_size
+                        print '-------------------------------------------------------------------'
+                elif this_sum>= base_line:
                     #加上该文件夹的大小才大于baseline，上一次累加小于baseline
                     #之前的做一次压缩，并从当前开始重置
                     #if debug: print '44-'
-                    if not is_enough_partition(additional_size=temp_sum,rate=patition_limit_rate):
-                        print '空间不够，后续不进行目录合并压缩'
-                        break
-                    if (temp_sum+ this_size)<=(base_line*buffer_rate):#超出baseline在合理的范围内，一起压缩
-                        if not is_enough_partition(additional_size=temp_sum+ this_size,rate=patition_limit_rate):
-                            print '空间不够，后续不进行目录合并压缩'
-                            break
+                    if True:#(temp_sum+ this_size)<=(base_line*buffer_rate):#超出baseline在合理的范围内，一起压缩
                         temp_sum_dir.append(element)
-                        tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type)
-                        if debug: print '合并本次压缩，当前 小文件夹目录序号i: %s, 第%s次压缩包 大小: %s' % (i,tar_count,get_str_size(temp_sum+this_size))
-                        print '-------------------------------------------------------------------'
-                        temp_sum_dir = []
-                        temp_sum = 0
-                    else:#超出baseline太多，只压缩前面的；本次作为下次累加的开始
-                        if not is_enough_partition(additional_size=temp_sum,rate=patition_limit_rate):
-                            print '空间不够，后续不进行目录合并压缩'
+                        #tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type)
+                        tar_result = tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type,addition_size=temp_sum+this_size,rate=partition_limit_rate, partition=partition)
+                        if tar_result!=1: 
+                            if debug: print '510 硬盘空间实用率超过%s，后续不进行目录合并压缩!' % partition_limit_rate
                             break
-                        tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type)
-                        if debug: print '压缩之前目录，当前 小文件夹目录序号i: %s, 第%s次压缩包size: %s' % (i,tar_count,get_str_size(temp_sum))
-                        print '-------------------------------------------------------------------'
-                        temp_sum_dir = [element]
-                        temp_sum = this_size
+                        else:#做一次压缩
+                            if debug: print '511 合并本次压缩，当前 小文件夹目录序号i: %s, 第%s次压缩包 大小: %s' % (i,tar_count,get_str_size(temp_sum+this_size))
+                            tar_count = tar_count + 1
+                            is_new_start = True
+                            temp_sum_dir = []
+                            temp_sum = 0
+                            print '-------------------------------------------------------------------'
+                    else:#超出baseline太多，只压缩前面的；本次作为下次累加的开始
+                        #tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type)
+                        tar_result = tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type,addition_size=temp_sum,rate=partition_limit_rate, partition=partition)
+                        if tar_result!=1: 
+                            if debug: print '520 硬盘空间实用率超过%s，后续不进行目录合并压缩!' % partition_limit_rate
+                            break
+                        else:#做一次压缩
+                            if debug: print '521 压缩之前目录，当前 小文件夹目录序号i: %s, 第%s次压缩包size: %s' % (i,tar_count,get_str_size(temp_sum))
+                            tar_count = tar_count + 1
+                            is_new_start = True
+                            temp_sum_dir = [element]
+                            temp_sum = this_size
+                            print '-------------------------------------------------------------------'
                     #tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type)
-                    tar_count = tar_count + 1
+                    #tar_count = tar_count + 1
                 else: #继续累加
                     #if debug: print '继续累加目录，当前 i: %s, size: %sM' % (i,temp_sum/1024/1024)
-                    temp_sum  = temp_sum + get_int_size(element[0])
+                    temp_sum  = this_sum
                     temp_sum_dir.append(element)
                     is_new_start = False
                     if i == len(normal_size_list)-1:
-                        if not is_enough_partition(additional_size=temp_sum,rate=patition_limit_rate):
-                            print '空间不够，最后一次未压缩！'
-                        else:
-                            tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type)
-                        if debug: print '最后一次压缩之前目录，当前 小文件夹目录序号i: %s, 第%s次压缩包size: %s' % (i,tar_count,get_str_size(temp_sum))
-                        print '-------------------------------------------------------------------'
-                        tar_count = tar_count + 1
+                        tar_result = tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type,addition_size=temp_sum,rate=partition_limit_rate, partition=partition)
+                        if tar_result!=1: 
+                            if debug: print '60 硬盘空间实用率超过%s，最后一次未目录合并压缩!' % partition_limit_rate
+                            break
+                        else:#做一次压缩
+                            if debug: print '61 最后一次压缩之前目录，当前 小文件夹目录序号i: %s, 第%s次压缩包size: %s' % (i,tar_count,get_str_size(temp_sum))
+                            tar_count = tar_count + 1
+                            print '-------------------------------------------------------------------'
                     else:
                         pass
         else:
-            if debug: print '获取目录元素出错，当前 i: %s, size: %sM' % (i,get_str_size(temp_sum))
+            if debug: print '71 获取目录元素出错，当前 i: %s, size: %sM' % (i,get_str_size(temp_sum))
             pass
         i = i + 1
     if debug: print '---------------------End 多日多个小大文件夹累计压缩--------------------------------\n'
