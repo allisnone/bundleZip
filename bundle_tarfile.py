@@ -223,9 +223,6 @@ def tar_huge_dir(dest_dir, limit_size='10G',huge_rate=1.5,keyword='network',tar_
                     temp_size = file_size
                 else:#继续累加，添加文件到压缩包
                     temp_size = temp_size + file_size
-                #print 'file:' + os.path.join(this_dir,file_name)
-                #print 'temp_size: %s limit_size: %s ' % (temp_size,limit_size_int)
-                #print 'simulate to add file: %s' % os.path.join(this_dir,file_name)
                 #添加文件到压缩包
                 tar.add(os.path.join(this_dir,file_name))
                 print '添加证据文件到压缩包: ' + os.path.join(this_dir,file_name)
@@ -390,39 +387,20 @@ def bundle_tar_zip(du_results,start_date,end_date,unit_size='10M',forensics_type
                         temp_sum_dir = [element]
                         temp_sum = this_size
                         print '-------------------------------------------------------------------'
-                elif this_sum>= base_line:
-                    #加上该文件夹的大小才大于baseline，上一次累加小于baseline
-                    #之前的做一次压缩，并从当前开始重置
-                    #if debug: print '44-'
-                    if True:#(temp_sum+ this_size)<=(base_line*buffer_rate):#超出baseline在合理的范围内，一起压缩
-                        temp_sum_dir.append(element)
-                        #tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type)
-                        tar_result = tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type,addition_size=temp_sum+this_size,rate=partition_limit_rate, partition=partition)
-                        if tar_result!=1: 
-                            if debug: print '510 硬盘空间实用率超过%s，后续不进行目录合并压缩!' % partition_limit_rate
-                            break
-                        else:#做一次压缩
-                            if debug: print '511 合并本次压缩，当前 小文件夹目录序号i: %s, 第%s次压缩包 大小: %s' % (i,tar_count,get_str_size(temp_sum+this_size))
-                            tar_count = tar_count + 1
-                            is_new_start = True
-                            temp_sum_dir = []
-                            temp_sum = 0
-                            print '-------------------------------------------------------------------'
-                    else:#超出baseline太多，只压缩前面的；本次作为下次累加的开始
-                        #tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type)
-                        tar_result = tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type,addition_size=temp_sum,rate=partition_limit_rate, partition=partition)
-                        if tar_result!=1: 
-                            if debug: print '520 硬盘空间实用率超过%s，后续不进行目录合并压缩!' % partition_limit_rate
-                            break
-                        else:#做一次压缩
-                            if debug: print '521 压缩之前目录，当前 小文件夹目录序号i: %s, 第%s次压缩包size: %s' % (i,tar_count,get_str_size(temp_sum))
-                            tar_count = tar_count + 1
-                            is_new_start = True
-                            temp_sum_dir = [element]
-                            temp_sum = this_size
-                            print '-------------------------------------------------------------------'
+                elif this_sum>= base_line: #超出baseline在合理的范围内，一起压缩
+                    temp_sum_dir.append(element)
                     #tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type)
-                    #tar_count = tar_count + 1
+                    tar_result = tar_and_zip_dirs(temp_sum_dir,tar_cout=tar_count,keyword=forensics_type,addition_size=temp_sum+this_size,rate=partition_limit_rate, partition=partition)
+                    if tar_result!=1: 
+                        if debug: print '510 硬盘空间实用率超过%s，后续不进行目录合并压缩!' % partition_limit_rate
+                        break
+                    else:#做一次压缩
+                        if debug: print '511 合并本次压缩，当前 小文件夹目录序号i: %s, 第%s次压缩包 大小: %s' % (i,tar_count,get_str_size(temp_sum+this_size))
+                        tar_count = tar_count + 1
+                        is_new_start = True
+                        temp_sum_dir = []
+                        temp_sum = 0
+                        print '-------------------------------------------------------------------'
                 else: #继续累加
                     #if debug: print '继续累加目录，当前 i: %s, size: %sM' % (i,temp_sum/1024/1024)
                     temp_sum  = this_sum
